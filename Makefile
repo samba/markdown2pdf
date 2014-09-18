@@ -20,7 +20,7 @@ package:
 # Workaround: add the X11 source context
 install:
 	git submodule update
-	test -x `which pip` || sudo easy_install pip
+	which pip || sudo easy_install pip
 	CPPFLAGS="$(CPPFLAGS)" sudo -E pip install pillow xhtml2pdf
 	sudo python setup.py install
 
