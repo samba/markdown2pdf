@@ -1,0 +1,3 @@
+[submodule "pygments-css"]
+	path = markdown2pdf/pygments-css
+	url = https://github.com/richleland/pygments-css.git

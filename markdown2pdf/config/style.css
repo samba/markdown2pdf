@@ -1,0 +1,48 @@
+/* This stylesheet is intended for PISA, the PDF builder. It uses some custom notations. 
+ See also: 
+    - https://github.com/chrisglass/xhtml2pdf/blob/master/doc/usage.rst
+    - http://xhtml2pdf.appspot.com/static/pisa-en.html
+*/
+
+@page {
+    size: letter portrait;
+    margin: 0.75in;
+}
+
+body {
+    font-size: 10pt;
+    font-family: sans-serif;
+}
+
+code, code > p:first-child {
+    display: block;
+    margin: 1em;
+    padding: 1em;
+    border-left-width: 1px;
+    border-left-style: inset;
+    border-left-color: {{border-color-code}};
+    border-top-width: 1px;
+    border-top-style: inset;
+    border-top-color: {{border-color-code}};
+    border-bottom-width: 1px;
+    border-bottom-style: inset;
+    border-bottom-color: {{border-color-code}};
+    border-right-width: 1px;
+    border-right-style: inset;
+    border-right-color: {{border-color-code}};
+    /* color: #007700; */
+    font-family: Courier New, monospace;
+}
+
+code > p {
+    display: block;
+    white-space: pre;
+    border-left-width: 0px;
+    border-right-width: 0px;
+    border-top-width: 0px;
+    border-bottom-width: 0px;
+}
+
+a[href^="mailto:"] {
+    text-decoration: none;
+}

@@ -1,0 +1,2 @@
+include markdown2pdf/config/*.css
+include markdown2pdf/pygments-css/*.css
