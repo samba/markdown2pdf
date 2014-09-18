@@ -9,8 +9,8 @@ Supports syntax highlighting via Pygments.
 
 From the command-line:
 
-```shell
-python -m markdown2pdf -i markdown_file.md -o output.pdf
+```bash
+python -m markdown2pdf -i markdown_file.md -i page2.md -o output.pdf
 ```
 
 As a Python module:
@@ -18,7 +18,7 @@ As a Python module:
 ```python
 import markdown2pdf
 
-print markdown2pdf.prepare("./markdown_file.md")
+print markdown2pdf.prepare("./markdown_file.md", "./page2.md")
 
 ```
 

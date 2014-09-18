@@ -3,33 +3,18 @@ import re
 import os
 import sys
 import markdown2
+import template
 import cStringIO
 import ho.pisa as pisa
 
-DOCUMENT_TEMPLATE = """
-<html>
-	<head>
-	    <title>{title}</title>
-	    <style>
-	    	{style}
-	    </style>
-	</head>
-	<body>
-		{body}
-	</body>
-</html>
-"""
 
 
-# Load the core structural style for page layout, etc.
-__default_style = os.path.join(os.path.dirname(__file__), 'config', 'style.css')
 
 def codestyle(name = 'github'):
 	return os.path.join(os.path.dirname(__file__), 'pygments-css', name + '.css');
 
-def prepare(markdown_file, title = None):
-	base = Document(markdown_file, title or markdown_file)
-	base.add_stylesheet(__default_style)
+def prepare(*markdown_files, **kwargs):
+	base = Document(*markdown_files, **kwargs)
 	base.add_stylesheet(codestyle('default'))
 	return base
 
@@ -42,6 +27,11 @@ def write_pdf(html_text, output):
 
 class Document(object):
 
+	# Load the core structural style for page layout, etc.
+	__template_origin = os.path.join(os.path.dirname(__file__), 'config')
+	__default_style = 'style.css'
+	__default_template = 'template.html'
+
 	@classmethod
 	def render_markdown(cls, filename, safe_mode = False):
 		extras = ['fenced-code-blocks', 'cuddled-lists']
@@ -52,28 +42,44 @@ class Document(object):
 		)
 
 
-	def __init__(self, markdown_file, title = '(untitled)', stylesheet = None):
+	def __init__(self, *markdown_file, **options):
 		self.macros = {}
-		self.template = DOCUMENT_TEMPLATE
-		self.title = title
-		self.body_text = self.render_markdown(markdown_file)
-		self.style_text = stylesheet or ""
+		self.pages = list(markdown_file)
+		self.stylesheets = [ os.path.join(self.__template_origin, self.__default_style) ]
+		self.template_engine = template.TemplateEngine(self.__template_origin)
+		self.template_file = self.__default_template
+		self.title = options.pop('title', None)
 
+
+	def use_template(self, template_file):
+		if os.path.isfile(os.path.join(self.__template_origin, template_file)):
+			self.template_file = template_file
 
 	def add_stylesheet(self, filename):
 		if os.path.isfile(filename):
-			self.style_text = self.style_text + "\n" + open(filename).read()
+			self.stylesheets.append(filename)
 
 	def fill_macro(self, match):
 		return self.macros.get(match.group(1), "/** unknown */")
 
 	@property
+	def style(self):
+		translate = re.compile(r'\{\{\s*([a-z0-9\-_]+)\s*\}\}')
+		for x in self.stylesheets:
+			yield translate.sub(self.fill_macro, open(x).read())
+
+
+	@property
 	def html(self):
-		search = r'\{\{\s*([a-z0-9\-_]+)\s*\}\}'
-		return self.template.format(
-			title = self.title,
-			body = self.body_text,
-			style = re.sub(search, self.fill_macro, self.style_text))
+		return self.template_engine.render(self.template_file, {
+				'title': self.title,
+				'styles': self.style,
+				'header': '',
+				'footer': '',
+				'pages': [ self.render_markdown(p) for p in self.pages ]
+			})
+
+
 
 	def render(self, output_buffer = None):
 		return write_pdf(self.html, output_buffer or sys.stdout)

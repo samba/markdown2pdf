@@ -7,14 +7,44 @@
 @page {
     size: letter portrait;
     margin: 0.75in;
+
+    @frame footer {
+        -pdf-frame-content: footer;
+        /* -pdf-frame-border: 0; */
+        width: 8in;
+        margin: 0.25in 0.25in 0.25in 0.25in;
+        left: 0in;
+        bottom: 0in;
+        height: 0.75in;
+
+    }
+
 }
+
 
 body {
     font-size: 10pt;
     font-family: sans-serif;
 }
 
-code, code > p:first-child {
+body div#footer {
+    text-align: right;
+    color: #999;
+}
+
+
+body h1 {
+    font-size: 2em;
+}
+
+
+
+body h3 {
+
+}
+
+
+body code {
     display: block;
     margin: 1em;
     padding: 1em;
@@ -34,14 +64,6 @@ code, code > p:first-child {
     font-family: Courier New, monospace;
 }
 
-code > p {
-    display: block;
-    white-space: pre;
-    border-left-width: 0px;
-    border-right-width: 0px;
-    border-top-width: 0px;
-    border-bottom-width: 0px;
-}
 
 a[href^="mailto:"] {
     text-decoration: none;
