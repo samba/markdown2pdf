@@ -1,0 +1,54 @@
+<!-- Template for basic page modeling in PDF renderings-->
+{% set default_title = "(untitled)" %}
+{% set default_author = "(anonymous)" %}
+{% set default_subject = "(no subject)" %}
+<html>
+	<head>
+	    <title>{{ title or default_title }}</title>
+	    <meta name="title" content="{{ title or default_title }}"/>
+	    <meta name="subject" content="{{ subject or default_subject }}"/>
+	    <meta name="author" content="{{ author or default_author }}"/>
+	    <style>
+	    	{% for sheet in styles|reverse %}
+	    	{% include sheet ignore missing with context %}
+	    	{% endfor %}
+	    </style>
+	</head>
+	<body>
+
+		<div id="toc" class="default container">
+			<span class='toc_title'>{{ title or default_title }}</span>
+			<span class='toc_header'>Table of Contents</span>
+			<pdf:toc/>
+		</div>
+
+
+		{% for page in pages %}
+		<div class="page container">
+			{{ page|safe }}
+		</div>
+		<pdf:nextpage/>
+		{% endfor %}
+
+
+
+		<div id="header">
+			<table class="header">
+				<tr>
+					<td class="title" width="75%">{{ title or default_title }}</td>
+					<td class="author" width="25%">{{ author or default_author }}</td>
+				</tr>
+			</table>
+		</div>
+
+		<!-- NOTE: the page-number tag MUST be on its OWN line (other than surrounding text)
+		  due to a bug in PISA, which causes duplication. -->
+
+		<div id="footer">
+			<div class='left'>{{ footer|safe }}</div>
+			<div class="pagenum">
+				Page <pdf:pagenumber/>
+			</div>
+		</div>
+	</body>
+</html>

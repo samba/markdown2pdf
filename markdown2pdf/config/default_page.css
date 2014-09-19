@@ -1,0 +1,148 @@
+/* This stylesheet is intended for PISA, the PDF builder. It uses some custom notations. 
+ See also: 
+    - https://github.com/chrisglass/xhtml2pdf/blob/master/doc/usage.rst
+    - http://xhtml2pdf.appspot.com/static/pisa-en.html
+*/
+
+{% set borderColorCode = "#338833" %}
+
+@page {
+    size: letter portrait;
+    margin: 0.75in;
+
+    @frame footer {
+        -pdf-frame-content: footer;
+        width: 7in;
+        margin: 0.25in 0.25in 0.25in 0.25in;
+        left: 0.5in;
+        bottom: 0in;
+        height: 0.75in;   
+    }
+
+    @frame header {
+        -pdf-frame-content: header;
+        width: 7in;
+        margin: 0.25in 0.25in 0.25in 0.25in;
+        left: 0.5in;
+        top: 0in;
+        height: 0.75in;   
+    }
+ 
+}
+
+
+body {
+    font-size: 10pt;
+    font-family: sans-serif;
+}
+
+
+
+
+
+h1, h2, h3, h4 {
+    -pdf-outline: true;
+}
+
+h1, h2 {
+    -pdf-outline-open: true;
+}
+
+h3, h4, h5, h6 {
+    -pdf-outline-open: false;
+}
+
+h1 {
+    font-size: 2em;
+}
+
+
+td.title, td.author {
+    font-style: italic;
+    color: #999;
+}
+
+td.title {
+    text-align: left;
+}
+
+td.author {
+    text-align: right;
+}
+
+span.toc_title {
+    display: block;
+    font-size: 2em;
+    font-weight: bold;
+}
+
+span.toc_header {
+    display: block;
+    font-size: 1.25em;
+    font-weight: bold;
+}
+
+div#footer div.left {
+    display: block;
+}
+
+div#footer div.pagenum {
+    display: block;
+    margin-left: auto;
+    margin-right: 0in;
+    text-align: right;
+    font-style: italic;
+    color: #999;
+}
+
+
+div.codehilite {
+    display: block;
+    margin: 1em;
+    padding: 1em;
+    font-family: Consolas, Courier New, monospace;
+
+    {% for side in "left", "top", "right", "bottom" %}
+        border-{{ side }}-width: 1px;
+        border-{{ side }}-color: {{ borderColorCode }};
+        border-{{ side }}-style: inset;
+    {% endfor %}
+
+}
+
+
+a[name] {
+    color: inherit;
+}
+
+
+a[href^="mailto:"] {
+    text-decoration: none;
+}
+
+
+
+pdftoc {
+    display: block;
+    page-break-after: always;
+    page-break-before: auto;
+}
+
+
+
+pdftoc.pdftoclevel0 {
+    font-weight: bold;
+    margin-top: 1em;
+}
+
+pdftoc.pdftoclevel1 {
+    margin-top: 0.25em;
+    font-weight: normal;
+    margin-left: 2em;
+}
+
+pdftoc.pdftoclevel2 {
+    font-weight: normal;
+    font-style: italic;
+    margin-left: 4em;
+}

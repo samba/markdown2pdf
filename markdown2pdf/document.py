@@ -1,90 +1,165 @@
 
 import re
 import os
-import sys
+import yaml
 import markdown2
 import template
 import cStringIO
-import ho.pisa as pisa
+from xhtml2pdf.document import pisaDocument
+import hashlib
+
+def mask_pisa_logging_error(active = True):
+	if active:
+		import logging
+		class nullLogger(logging.Handler):
+			level = 0
+			def emit(self, record):
+				pass
+		logging.getLogger('xhtml2pdf').addHandler(nullLogger())
+		logging.getLogger('ho.pisa').addHandler(nullLogger())
 
 
+mask_pisa_logging_error(True)
+
+def load(config_file):
+	config = Objectify(yaml.load(open(config_file)))
 
 
-def codestyle(name = 'github'):
-	return os.path.join(os.path.dirname(__file__), 'pygments-css', name + '.css');
-
-def prepare(*markdown_files, **kwargs):
-	base = Document(*markdown_files, **kwargs)
-	base.add_stylesheet(codestyle('default'))
+def prepare(*markdown_files, **options):
+	base = Document(*markdown_files, **options)
+	base.stylesheets.append(base.codestyle('default'))
 	return base
 
+def asset_paths(cwd = None):
+	_local = os.path.dirname(__file__)
+	return [
+		cwd or os.getcwd(),
+		os.path.join(_local, 'config'),
+		os.path.join(_local, 'pygments-css')
+	]
 
-def write_pdf(html_text, output):
-	content = cStringIO.StringIO(html_text)
-	return not (pisa.CreatePDF(content, output)).err
+
+
+class Objectify(object):
+    def __init__(self, base = None):
+        if isinstance(base, dict):
+            self.update(base)
+
+    def update(self, *data, **options):
+        for elem in data:
+            if isinstance(elem, dict):
+                self.__dict__.update(elem)
+        self.__dict__.update(options)
+        for key, value in self.__dict__.iteritems():
+            if isinstance(value, dict):
+                self.__dict__[key] = Objectify(value)
+            elif isinstance(value, list):
+                self.__dict__[key] = [ (isinstance(elem, dict) and Objectify(elem) or elem) for elem in value ]
 
 
 
-class Document(object):
+class Document(markdown2.Markdown):
 
 	# Load the core structural style for page layout, etc.
-	__template_origin = os.path.join(os.path.dirname(__file__), 'config')
-	__default_style = 'style.css'
-	__default_template = 'template.html'
+	__default_style = 'default_page.css'
+	__default_template = 'default_page.html'
+
+	default_extras = [
+		'fenced-code-blocks',
+		'cuddled-lists',
+		'header-ids',
+		'metadata',
+		'toc' # This will override the PDF table of content magic
+	]
 
 	@classmethod
-	def render_markdown(cls, filename, safe_mode = False):
-		extras = ['fenced-code-blocks', 'cuddled-lists']
-		return markdown2.markdown(
-			open(filename).read(), 
-			extras = extras, 
-			safe_mode = safe_mode
+	def codestyle(cls, name = 'default'):
+		for path in asset_paths():
+			if os.path.isfile(os.path.join(path, name + '.css')):
+				return name + '.css'
+
+
+	def __init__(self, *pages, **options):
+		self.page_files = pages
+		self.context = {
+			"author": options.get('author', None),
+			"title": options.get('title', None),
+			"subject": options.get('subject', None),
+			"footer": options.get('footer', ''),
+			"header": options.get('header', '')
+		}
+		self.stylesheets = [ self.__default_style ]
+		self.link_patterns = None
+		self.template_file = options.get('template', self.__default_template)
+
+		super(Document, self).__init__(
+			safe_mode = True,
+			extras = self.default_extras,
+			link_patterns = self.link_patterns,
+			use_file_vars = True
 		)
 
+	def translate(self, text, *context, **options):
+		default = options.pop('default', None)
+		_pattern = re.compile(r'\{\{\s*([\w\d_\-]+)\s*\}\}')
+		def _translate(match):
+			for c in context:
+				if match.group(1) in c:
+					return c.get(match.group(1))
+			return (default is None) and (match.group(0)) or default 
+		return _pattern.sub(_translate, text)
 
-	def __init__(self, *markdown_file, **options):
-		self.macros = {}
-		self.pages = list(markdown_file)
-		self.stylesheets = [ os.path.join(self.__template_origin, self.__default_style) ]
-		self.template_engine = template.TemplateEngine(self.__template_origin)
-		self.template_file = self.__default_template
-		self.title = options.pop('title', None)
 
 
-	def use_template(self, template_file):
-		if os.path.isfile(os.path.join(self.__template_origin, template_file)):
-			self.template_file = template_file
-
-	def add_stylesheet(self, filename):
-		if os.path.isfile(filename):
-			self.stylesheets.append(filename)
-
-	def fill_macro(self, match):
-		return self.macros.get(match.group(1), "/** unknown */")
-
-	@property
-	def style(self):
-		translate = re.compile(r'\{\{\s*([a-z0-9\-_]+)\s*\}\}')
-		for x in self.stylesheets:
-			yield translate.sub(self.fill_macro, open(x).read())
+	@property 
+	def pages(self):
+		context = {}
+		context.update(self.context)
+		for filename in self.page_files:
+			content = self.convert(open(filename).read())
+			context.update(content.metadata)
+			# This translation runs here to support file-local variables before it reaches Jinja
+			text = self.translate(str(content), context)
+			yield text, context
 
 
 	@property
 	def html(self):
-		return self.template_engine.render(self.template_file, {
-				'title': self.title,
-				'styles': self.style,
-				'header': '',
-				'footer': '',
-				'pages': [ self.render_markdown(p) for p in self.pages ]
-			})
+
+		t_engine = template.TemplateEngine(*asset_paths())
+
+		root_context = self.context
+
+		pages, context = [], None
+		for page, context in self.pages:
+			pages.append(page)
+			for k, v in context.iteritems():
+				if not (root_context.get(k, None)):
+					root_context[k] = v
 
 
+		root_context.update({
+			"styles": self.stylesheets,
+			"pages": pages
+		})
+		
+		return t_engine.render(self.template_file, root_context)
 
-	def render(self, output_buffer = None):
-		return write_pdf(self.html, output_buffer or sys.stdout)
+
+	def fix_anchor_name(self, text):
+		pattern = re.compile(r'<([hH][0-9])\s+id="([^\"]+)"([^>]*)>(.*?)</\1>')
+		return pattern.sub(r'<a name="\g<2>">\n\g<0></a>', text)
+
+
+	def render_pdf(self, output_buffer):
+		return not pisaDocument(cStringIO.StringIO(self.html), output_buffer).err
 
 	def __str__(self):
-		placeholder = cStringIO.StringIO()
-		self.render(placeholder)
-		return placeholder.getvalue()
+		_buffer = cStringIO.StringIO()
+		self.render_pdf(_buffer)
+		return _buffer.getvalue()
+
+
+
+
+

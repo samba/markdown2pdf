@@ -1,3 +1,7 @@
+---
+author: Sam Briesemeister
+title: PDF Documents from Markdown
+---
 # Generate PDF Documents from Markdown files
 
 Should be pretty self-explanatory.
