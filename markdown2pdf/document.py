@@ -21,40 +21,19 @@ def mask_pisa_logging_error(active = True):
 
 mask_pisa_logging_error(True)
 
-def load(config_file):
-	config = Objectify(yaml.load(open(config_file)))
-
 
 def prepare(*markdown_files, **options):
-	base = Document(*markdown_files, **options)
-	base.stylesheets.append(base.codestyle('default'))
-	return base
-
-def asset_paths(cwd = None):
-	_local = os.path.dirname(__file__)
-	return [
-		cwd or os.getcwd(),
-		os.path.join(_local, 'config'),
-		os.path.join(_local, 'pygments-css')
-	]
+	return Document(*markdown_files, **options)
 
 
 
-class Objectify(object):
-    def __init__(self, base = None):
-        if isinstance(base, dict):
-            self.update(base)
+def load(yaml_file):
+	basepath = os.path.dirname(yaml_file)
+	doc = Document.fromBookConfig(yaml_file, assets = basepath)
+	return doc
+	
 
-    def update(self, *data, **options):
-        for elem in data:
-            if isinstance(elem, dict):
-                self.__dict__.update(elem)
-        self.__dict__.update(options)
-        for key, value in self.__dict__.iteritems():
-            if isinstance(value, dict):
-                self.__dict__[key] = Objectify(value)
-            elif isinstance(value, list):
-                self.__dict__[key] = [ (isinstance(elem, dict) and Objectify(elem) or elem) for elem in value ]
+
 
 
 
@@ -62,6 +41,7 @@ class Document(markdown2.Markdown):
 
 	# Load the core structural style for page layout, etc.
 	__default_style = 'default_page.css'
+	__default_code_style = 'default'
 	__default_template = 'default_page.html'
 
 	default_extras = [
@@ -71,6 +51,25 @@ class Document(markdown2.Markdown):
 		'metadata',
 		'toc' # This will override the PDF table of content magic
 	]
+
+	@staticmethod
+	def paths(cwd = None):
+		_local = os.path.dirname(__file__)
+		return [
+			cwd or os.getcwd(),
+			os.path.join(_local, 'config'),
+			os.path.join(_local, 'pygments-css')
+		]
+
+
+	@classmethod
+	def fromBookConfig(cls, filename, **options):
+		config = yaml.load(open(filename))
+		book = config.get('book', None)
+		if book is not None:
+			book.update(options)
+			return cls(*book.get('parts', []), **book)
+
 
 	@classmethod
 	def codestyle(cls, name = 'default'):
@@ -86,11 +85,15 @@ class Document(markdown2.Markdown):
 			"title": options.get('title', None),
 			"subject": options.get('subject', None),
 			"footer": options.get('footer', ''),
-			"header": options.get('header', '')
+			"header": options.get('header', ''),
+			"section_break": options.get('section_break', True),
+			"enable_toc": options.get('enable_toc', True),
+			"enable_placeholders": options.get('enable_placeholders', False)
 		}
-		self.stylesheets = [ self.__default_style ]
+		self.stylesheets = [ self.__default_style, self.__default_code_style + '.css' ]
 		self.link_patterns = None
 		self.template_file = options.get('template', self.__default_template)
+		self.asset_path = options.get('assets', None)
 
 		super(Document, self).__init__(
 			safe_mode = True,
@@ -109,29 +112,37 @@ class Document(markdown2.Markdown):
 			return (default is None) and (match.group(0)) or default 
 		return _pattern.sub(_translate, text)
 
+	def resolve_path(self, filename, *paths):
+		if os.path.isfile(filename):
+			return filename
+		for path in paths:
+			q = os.path.join(path, filename)
+			if os.path.isfile(q):
+				return q
 
 
-	@property 
-	def pages(self):
+	def pages(self, *paths):
 		context = {}
 		context.update(self.context)
 		for filename in self.page_files:
-			content = self.convert(open(filename).read())
-			context.update(content.metadata)
-			# This translation runs here to support file-local variables before it reaches Jinja
-			text = self.translate(str(content), context)
-			yield text, context
+			readpath = self.resolve_path(filename, *paths)
+			if readpath:
+				content = self.convert(open(readpath).read())
+				context.update(content.metadata)
+				# This translation runs here to support file-local variables before it reaches Jinja
+				text = self.translate(str(content), context)
+				yield text, context
 
 
 	@property
 	def html(self):
 
-		t_engine = template.TemplateEngine(*asset_paths())
-
+		search_path = self.paths(self.asset_path)
+		t_engine = template.TemplateEngine(*search_path)
 		root_context = self.context
 
 		pages, context = [], None
-		for page, context in self.pages:
+		for page, context in self.pages(*search_path):
 			pages.append(page)
 			for k, v in context.iteritems():
 				if not (root_context.get(k, None)):

@@ -1,0 +1,12 @@
+book:
+  title: Generating PDFs from Markdown
+  author: Sam Briesemeister
+  subject: Making beautiful, packaged publications from technical text-based formats
+  section_break: true
+  enable_toc: true
+  parts:
+    - summary.md
+    - how_it_works.md
+    - examples.md
+
+

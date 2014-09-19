@@ -1,7 +1,7 @@
 <!-- Template for basic page modeling in PDF renderings-->
-{% set default_title = "(untitled)" %}
-{% set default_author = "(anonymous)" %}
-{% set default_subject = "(no subject)" %}
+{% set default_title = enable_placeholders and "(untitled)" or "" %}
+{% set default_author = enable_placeholders and "(anonymous)" or "" %}
+{% set default_subject = enable_placeholders and "(no subject)" or "" %}
 <html>
 	<head>
 	    <title>{{ title or default_title }}</title>
@@ -9,25 +9,29 @@
 	    <meta name="subject" content="{{ subject or default_subject }}"/>
 	    <meta name="author" content="{{ author or default_author }}"/>
 	    <style>
-	    	{% for sheet in styles|reverse %}
+	    	{% for sheet in styles %}
 	    	{% include sheet ignore missing with context %}
 	    	{% endfor %}
 	    </style>
 	</head>
 	<body>
 
+		{% if enable_toc %}
 		<div id="toc" class="default container">
 			<span class='toc_title'>{{ title or default_title }}</span>
 			<span class='toc_header'>Table of Contents</span>
 			<pdf:toc/>
 		</div>
+		{% endif %}
 
 
 		{% for page in pages %}
 		<div class="page container">
 			{{ page|safe }}
 		</div>
+		{% if section_break %}
 		<pdf:nextpage/>
+		{% endif %}
 		{% endfor %}
 
 

@@ -1,7 +1,4 @@
----
-author: Sam Briesemeister
-title: PDF Documents from Markdown
----
+
 # Generate PDF Documents from Markdown files
 
 Should be pretty self-explanatory.
@@ -30,5 +27,5 @@ print markdown2pdf.prepare("./markdown_file.md", "./page2.md")
 ## Thanks
 
 - Rich Leland for <https://github.com/richleland/pygments-css>
-- Chris Glass for <https://github.com/chrisglass/xhtml2pdf>
+- Chris Glass and Dirk Holtwick for <https://github.com/chrisglass/xhtml2pdf>
 - Trent Mick for <https://github.com/trentm/python-markdown2>
